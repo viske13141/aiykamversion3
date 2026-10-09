@@ -1,0 +1,72 @@
+AMAZON Q DEVELOPER — SHAKTHI SCROLL-DRIVEN CINEMATIC PAGE
+
+PROJECT CONTEXT
+Existing React/TypeScript website. Project root (Windows):
+C:\Users\vishn\Desktop\Frelance\technomold\temple_project\version_1_landing page\pixel-perfect-replica-494bba1f\pixel-perfect-replica-494bba1f
+
+TASK
+Inspect the existing codebase, routing, About page, navigation, styles, and installed dependencies. Implement a production-ready, responsive Shakthi page, accessible from the existing Shakthi link/button on the About page. Reuse the project's existing routing and design patterns; do not rewrite unrelated pages. Clicking Shakthi navigates to the new route (prefer /shakthi unless an established route exists), scrolls to top, and displays frame 1 immediately. Add a graceful back/navigation option.
+
+FRAME SOURCES — STRICT ORDER
+Use EXTRACTED IMAGE FOLDERS, NOT ZIP FILES, in public/shakthi:
+1) /shakthi/frames_Sri_Chakra_morphs_into_idol_20261009125518/frame_0001.jpg through frame_0020.jpg (20 frames)
+2) /shakthi/frames_Goddess_idol_morphs_in_temple_20261009125522/frame_0001.jpg through frame_0035.jpg (35 frames)
+3) /shakthi/frames_Create_devotional_video_sequence_20261009130950/frame_0001.jpg through frame_0060.jpg (60 frames)
+Total 115 frames. Files use four-digit zero padding. Verify every referenced file exists and that the folders contain the stated counts. Do not sort all filenames across folders together. Build one ordered frame manifest, grouping the three sequences in exactly the order above. The three uploaded ZIPs correspond to these folders but should not be loaded by the browser.
+
+SCROLL EXPERIENCE
+A premium, editorial, cinematic devotional microsite matching the existing website's antique bronze, sandstone, cream, and amber palette. On initial load, show first Sri Chakra frame. A full-viewport sticky image stage remains visible while the page scrolls through a generous scroll track (start with approximately 500vh desktop, tune for feel). Scrolling forward advances through all 115 frames in order; scrolling backward reverses through them. Map normalized scroll progress to frame indices, clamp to [0,114], and use requestAnimationFrame to batch updates. Preserve original image aspect ratio with object-fit: cover and object-position: center; avoid stretched images. Provide a mobile-specific composition if needed. No autoplay that ignores scroll position, no looping, no abrupt jumps or black flashes at folder boundaries. Do not add unnecessary glowing particle effects. No sudden scroll hijacking or heavy smooth-scroll libraries. Prefer native scrolling; avoid overriding wheel/touch events. Keep smooth natural scrolling on desktop and touch devices.
+
+PERFORMANCE
+Preload the first image before showing the stage. Eagerly load a modest nearby frame window and progressively load remaining images with bounded concurrency. Cache decoded images and never repeatedly recreate image elements per scroll tick. For reliable frame display, consider canvas drawing with correctly scaled devicePixelRatio, or an image element with predecoded frames and no flicker. Canvas must resize cleanly and redraw the current frame; do not let a missing frame blank the stage. Avoid requesting all 115 full-resolution frames simultaneously on mobile. Use a loading/progress indicator until first frame is ready. Add fallback on image failure and log missing paths in development. Respect prefers-reduced-motion with a still-image/content-first alternative. Avoid hydration issues and clean up listeners/RAF on unmount. Ensure accessibility, readable contrast, keyboard navigation and meaningful alt/aria descriptions.
+
+CONTENT / EDITORIAL OVERLAYS
+Do not burn text into image frames or cover the goddess face. Add restrained HTML typography (elegant serif title and small uppercase eyebrow) positioned in safe negative space. Suggested content:
+Opening (frames 1–20): 'SHAKTHI — THE DIVINE FEMININE' / 'The sacred geometry of Sri Chakra' / 'Scroll to discover'.
+Second sequence (frames 21–55): 'THE REVELATION' / 'From sacred geometry to the divine presence'.
+Third sequence (frames 56–115): 'THE MANY FORMS OF SHAKTHI' / 'A journey through sacred expressions of the Goddess'.
+Make transitions between overlay titles subtle and tied to scroll progress. Avoid identifying a particular goddess at an exact frame unless it has been manually verified from the actual footage. Provide a small unobtrusive frame/section progress indicator and optional '01 / 03' section label. Keep visual hierarchy similar to existing MJK/Shakthi editorial site.
+
+GODDESS INFORMATION SECTION AFTER THE ANIMATION
+After the sticky animation track, add a beautiful responsive informational section with concise cards or chapters about the 18 Maha Shakti Peethas. This is editorial information and must NOT imply that all 18 distinct deities appear in these 115 frames. Traditions and lists differ; label the following as a commonly used Ashtadasha Shakti Peetha tradition and verify spellings, locations and deity associations against reliable sources before publication. Draft list for editorial review:
+1 Shankari — Trincomalee, Sri Lanka
+2 Kamakshi — Kanchipuram, Tamil Nadu
+3 Shrinkhala Devi — Pradyumna (traditional location disputed)
+4 Chamundeshwari — Mysuru, Karnataka
+5 Jogulamba — Alampur, Telangana
+6 Bhramaramba — Srisailam, Andhra Pradesh
+7 Mahalakshmi — Kolhapur, Maharashtra
+8 Ekaveerika — Mahur, Maharashtra
+9 Mahakali — Ujjain, Madhya Pradesh
+10 Puruhutika — Pithapuram, Andhra Pradesh
+11 Girija (Biraja) — Jajpur, Odisha
+12 Manikyamba — Draksharamam, Andhra Pradesh
+13 Kamarupa (Kamakhya) — Guwahati, Assam
+14 Madhaveswari (Alopi tradition) — Prayagraj, Uttar Pradesh
+15 Jwalamukhi — Kangra district, Himachal Pradesh
+16 Mangala Gauri — Gaya, Bihar
+17 Vishalakshi — Varanasi, Uttar Pradesh
+18 Saraswati (Sharada) — Kashmir region (location/tradition disputed)
+This list is provisional. Do not invent mythology, temple photos, attributes, or precise correspondences to generated goddess morphs. Allow content to be edited via a simple typed data file. Do not automatically equate the previously discussed concept names Meenakshi, Bhavani, Tripura Sundari, Renuka etc. with the exact 18-item traditional list without editorial verification.
+
+IMPLEMENTATION STEPS
+1 Inspect package.json, route structure, About page and navigation.
+2 Check folders and frame names on disk; validate all 115 assets.
+3 Create a typed manifest and reusable scroll-sequence component/hook.
+4 Build Shakthi page, responsive styles, overlay content and content section.
+5 Wire About page Shakthi link to new route, preserving existing navigation.
+6 Verify build, TypeScript, any existing tests, and desktop/mobile behavior.
+7 Report exact files changed, route URL, performance strategy, tests run and any missing assets.
+
+ACCEPTANCE CRITERIA
+- Shakthi navigation opens a separate working page.
+- First displayed frame is first Sri Chakra JPG.
+- Scroll progresses 20 + 35 + 60 frames in exact order, no skipped folders.
+- Reverse scrolling works.
+- Smooth visual continuity without flashes at frame 20/21 and 55/56.
+- No stretched images; smooth mobile and desktop operation.
+- The page ends with accessible, readable goddess content.
+- No unrelated site pages are broken.
+- Do not claim exact goddess identity from AI-generated frames without verification.
+
+IMPORTANT: Implement the changes directly in the project. Do not merely describe the approach. If any files are missing, report their precise paths and continue with a robust fallback rather than fabricating assets.

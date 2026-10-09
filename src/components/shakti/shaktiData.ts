@@ -1,285 +1,118 @@
-/**
- * Shakti Journey — Data Manifest
- *
- * ASSET MAPPING NOTE (requires editorial review):
- * The 40 frames in /goddesvideo2/ depict 9 visual scenes.
- * Provisionally mapped to goddesses 01–09 (Shankari through Mahakali).
- * Flag: MAPPING_UNCERTAIN — visual confirmation required before publication.
- */
+// ─────────────────────────────────────────────────────────────────────────────
+// Shakthi page — frame manifest and editorial data
+// ─────────────────────────────────────────────────────────────────────────────
 
-export interface GoddessEntry {
-  id: string;
+// FRAME MANIFEST — 135 frames in strict folder order
+// Folder 1: Sri Chakra (new)              (frames 1–40)
+// Folder 2: Goddess idol morphs in temple (frames 41–75)
+// Folder 3: Devotional video sequence    (frames 76–135)
+
+const F1 = "/shakthi/chakra/frames_Sri_Chakra_morphs_into_idol_20261009125518";
+const F2 = "/shakthi/frames_Goddess_idol_morphs_in_temple_20261009125522";
+const F3 = "/shakthi/frames_Create_devotional_video_sequence_20261009130950";
+
+function pad(n: number) {
+  return String(n).padStart(4, "0");
+}
+
+export const SHAKTHI_FRAMES: string[] = [
+  // Folder 1 — 40 frames
+  ...Array.from({ length: 40 }, (_, i) => `${F1}/frame_${pad(i + 1)}.jpg`),
+  // Folder 2 — 35 frames
+  ...Array.from({ length: 35 }, (_, i) => `${F2}/frame_${pad(i + 1)}.jpg`),
+  // Folder 3 — 60 frames
+  ...Array.from({ length: 60 }, (_, i) => `${F3}/frame_${pad(i + 1)}.jpg`),
+];
+
+// Total must be 135
+export const TOTAL_FRAMES = SHAKTHI_FRAMES.length; // 135
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Overlay sections — tied to frame ranges
+// ─────────────────────────────────────────────────────────────────────────────
+export interface OverlaySection {
+  /** 0-based inclusive frame indices */
+  startFrame: number;
+  endFrame: number;
+  eyebrow: string;
+  title: string;
+  subtitle: string;
+  position: "bottom-left" | "bottom-center" | "top-right";
+}
+
+export const OVERLAY_SECTIONS: OverlaySection[] = [
+  {
+    startFrame: 0,
+    endFrame: 39,
+    eyebrow: "01 / 03",
+    title: "SHAKTI — THE DIVINE FEMININE",
+    subtitle: "The Sacred Journey Through the 18 Maha Shakti Peethas",
+    position: "bottom-left",
+  },
+  {
+    startFrame: 40,
+    endFrame: 74,
+    eyebrow: "02 / 03",
+    title: "THE REVELATION",
+    subtitle: "From the Sacred Sri Chakra to the Divine Forms of Shakti",
+    position: "bottom-left",
+  },
+  {
+    startFrame: 75,
+    endFrame: 134,
+    eyebrow: "03 / 03",
+    title: "THE ETERNAL SHAKTI",
+    subtitle: "One Divine Energy, Many Sacred Manifestations",
+    position: "bottom-left",
+  },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 18 Maha Shakti Peethas — editorial data
+// IMPORTANT: This list follows one commonly cited Ashtadasha Shakti Peetha
+// tradition. Traditions, spellings, and locations vary across sources.
+// All entries are provisional and require editorial verification before
+// publication. Do not imply these deities appear in the cinematic frames.
+// ─────────────────────────────────────────────────────────────────────────────
+export interface PeethaEntry {
   seq: number;
   name: string;
   location: string;
-  description: string;
-  side: "left" | "right";
-  source: "frames" | "still";
-  frameStart?: number;
-  frameEnd?: number;
-  repFrame?: number;
-  stillPath?: string;
-  focalPoint: string;
+  note?: string; // editorial/verification flag
 }
 
-export const VIDEO_SCENES: GoddessEntry[] = [
+export const SHAKTI_PEETHAS: PeethaEntry[] = [
+  { seq: 1, name: "Shankari", location: "Trincomalee, Sri Lanka" },
+  { seq: 2, name: "Kamakshi", location: "Kanchipuram, Tamil Nadu" },
   {
-    id: "shankari",
-    seq: 1,
-    name: "Shankari",
-    location: "Kanchipuram, Tamil Nadu",
-    description:
-      "Shankari, the auspicious one, presides at Kanchipuram. Her presence invites reflection on the creative power that underlies all form and the grace that sustains it.",
-    side: "left",
-    source: "frames",
-    frameStart: 1,
-    frameEnd: 4,
-    repFrame: 2,
-    focalPoint: "50% 30%",
-  },
-  {
-    id: "kamakshi",
-    seq: 2,
-    name: "Kamakshi",
-    location: "Kanchipuram, Tamil Nadu",
-    description:
-      "Kamakshi, whose eyes fulfil all desires, embodies the creative will that moves from intention to manifestation. She is the energy of compassionate purpose.",
-    side: "right",
-    source: "frames",
-    frameStart: 5,
-    frameEnd: 8,
-    repFrame: 6,
-    focalPoint: "50% 30%",
-  },
-  {
-    id: "shrinkhala",
     seq: 3,
-    name: "Shrinkhala",
-    location: "Prayagraj, Uttar Pradesh",
-    description:
-      "Shrinkhala, the bound one who liberates, holds the paradox of constraint and freedom. Her sacred site at Prayagraj marks the confluence of rivers and intentions.",
-    side: "left",
-    source: "frames",
-    frameStart: 9,
-    frameEnd: 13,
-    repFrame: 11,
-    focalPoint: "50% 35%",
+    name: "Shrinkhala Devi",
+    location: "Pradyumna",
+    note: "Traditional location disputed across sources.",
   },
+  { seq: 4, name: "Chamundeshwari", location: "Mysuru, Karnataka" },
+  { seq: 5, name: "Jogulamba", location: "Alampur, Telangana" },
+  { seq: 6, name: "Bhramaramba", location: "Srisailam, Andhra Pradesh" },
+  { seq: 7, name: "Mahalakshmi", location: "Kolhapur, Maharashtra" },
+  { seq: 8, name: "Ekaveerika", location: "Mahur, Maharashtra" },
+  { seq: 9, name: "Mahakali", location: "Ujjain, Madhya Pradesh" },
+  { seq: 10, name: "Puruhutika", location: "Pithapuram, Andhra Pradesh" },
+  { seq: 11, name: "Girija (Biraja)", location: "Jajpur, Odisha" },
+  { seq: 12, name: "Manikyamba", location: "Draksharamam, Andhra Pradesh" },
+  { seq: 13, name: "Kamarupa (Kamakhya)", location: "Guwahati, Assam" },
   {
-    id: "chamundeshwari",
-    seq: 4,
-    name: "Chamundeshwari",
-    location: "Mysuru, Karnataka",
-    description:
-      "Chamundeshwari, the fierce protector, stands atop Chamundi Hill. Her energy transforms what obstructs creative expression into the clarity needed for new beginnings.",
-    side: "right",
-    source: "frames",
-    frameStart: 14,
-    frameEnd: 17,
-    repFrame: 15,
-    focalPoint: "50% 30%",
-  },
-  {
-    id: "jogulamba",
-    seq: 5,
-    name: "Jogulamba",
-    location: "Alampur, Telangana",
-    description:
-      "Jogulamba at Alampur is a sacred destination in this journey through the eighteen Maha Shakti Peethas. Her presence speaks to the primordial creative force that precedes all form and thought.",
-    side: "left",
-    source: "frames",
-    frameStart: 18,
-    frameEnd: 21,
-    repFrame: 19,
-    focalPoint: "50% 30%",
-  },
-  {
-    id: "bhramaramba",
-    seq: 6,
-    name: "Bhramaramba",
-    location: "Srisailam, Andhra Pradesh",
-    description:
-      "Bhramaramba, the bee goddess, dwells at Srisailam alongside Mallikarjuna. Her humming energy represents the ceaseless creative vibration within all living things.",
-    side: "right",
-    source: "frames",
-    frameStart: 22,
-    frameEnd: 25,
-    repFrame: 23,
-    focalPoint: "50% 30%",
-  },
-  {
-    id: "mahalakshmi",
-    seq: 7,
-    name: "Mahalakshmi",
-    location: "Kolhapur, Maharashtra",
-    description:
-      "Mahalakshmi at Kolhapur is the goddess of abundance and creative prosperity. She reminds us that creation flourishes when intention is aligned with generosity.",
-    side: "left",
-    source: "frames",
-    frameStart: 26,
-    frameEnd: 29,
-    repFrame: 27,
-    focalPoint: "50% 30%",
-  },
-  {
-    id: "ekaveerika-renuka",
-    seq: 8,
-    name: "Ekaveerika — Renuka",
-    location: "Mahur, Maharashtra",
-    description:
-      "Renuka at Mahur embodies the creative courage to act with integrity. Her story speaks to the power of truth as the foundation of all meaningful creation.",
-    side: "right",
-    source: "frames",
-    frameStart: 30,
-    frameEnd: 34,
-    repFrame: 32,
-    focalPoint: "50% 30%",
-  },
-  {
-    id: "mahakali",
-    seq: 9,
-    name: "Mahakali",
-    location: "Ujjain, Madhya Pradesh",
-    description:
-      "Mahakali at Ujjain is the great transformer. Her energy dissolves what no longer serves, creating the sacred space from which new possibilities emerge.",
-    side: "left",
-    source: "frames",
-    frameStart: 35,
-    frameEnd: 40,
-    repFrame: 37,
-    focalPoint: "50% 30%",
-  },
-];
-
-export const STILL_GODDESSES: GoddessEntry[] = [
-  {
-    id: "puruhutika",
-    seq: 10,
-    name: "Puruhutika",
-    location: "Pithapuram, Andhra Pradesh",
-    description:
-      "Explore Puruhutika at Pithapuram, one of the sacred destinations in this journey through the eighteen Maha Shakti Peethas.",
-    side: "right",
-    source: "still",
-    stillPath: "/goddess18/10-puruhutika.jpg",
-    focalPoint: "50% 25%",
-  },
-  {
-    id: "girija-biraja",
-    seq: 11,
-    name: "Girija — Biraja",
-    location: "Jajpur, Odisha",
-    description:
-      "At Jajpur, this journey honours Devi as Biraja. Pause here to reflect on intention, care, and the ways creativity takes shape in everyday life.",
-    side: "left",
-    source: "still",
-    stillPath: "/goddess18/11-girija-biraja.jpg",
-    focalPoint: "50% 25%",
-  },
-  {
-    id: "manikyamba",
-    seq: 12,
-    name: "Manikyamba",
-    location: "Draksharama, Andhra Pradesh",
-    description:
-      "Discover Manikyamba at Draksharama, a sacred destination in the eighteen-Peetha journey. Reflect on how attention and devotion can give meaning to creative expression.",
-    side: "right",
-    source: "still",
-    stillPath: "/goddess18/12-manikyamba.jpg",
-    focalPoint: "50% 25%",
-  },
-  {
-    id: "kamakhya",
-    seq: 13,
-    name: "Kamakhya",
-    location: "Guwahati, Assam",
-    description:
-      "Explore Kamakhya at Guwahati, a sacred destination associated with Shakti. This section invites reflection on creation, renewal, and the rhythms of life.",
-    side: "left",
-    source: "still",
-    stillPath: "/goddess18/13-kamakhya.jpg",
-    focalPoint: "50% 25%",
-  },
-  {
-    id: "madhaveshwari",
     seq: 14,
-    name: "Madhaveshwari",
+    name: "Madhaveswari",
     location: "Prayagraj, Uttar Pradesh",
-    description:
-      "This journey honours Madhaveshwari at Prayagraj. Pause to consider how intention can guide the beginnings and direction of your own creative work.",
-    side: "right",
-    source: "still",
-    stillPath: "/goddess18/14-madhaveshwari.jpg",
-    focalPoint: "50% 25%",
+    note: "Associated with the Alopi tradition.",
   },
+  { seq: 15, name: "Jwalamukhi", location: "Kangra district, Himachal Pradesh" },
+  { seq: 16, name: "Mangala Gauri", location: "Gaya, Bihar" },
+  { seq: 17, name: "Vishalakshi", location: "Varanasi, Uttar Pradesh" },
   {
-    id: "vishalakshi",
-    seq: 15,
-    name: "Vishalakshi",
-    location: "Varanasi, Uttar Pradesh",
-    description:
-      "Discover Vishalakshi at Varanasi. Let this moment in the journey invite attentive observation, compassion, and care in how you engage with the world.",
-    side: "left",
-    source: "still",
-    stillPath: "/goddess18/15-vishalakshi.jpg",
-    focalPoint: "50% 25%",
-  },
-  {
-    id: "mangala-gauri",
-    seq: 16,
-    name: "Mangala Gauri",
-    location: "Gaya, Bihar",
-    description:
-      "Explore Mangala Gauri at Gaya. Reflect on the care and commitment that help meaningful intentions grow into everyday action.",
-    side: "right",
-    source: "still",
-    stillPath: "/goddess18/16-mangala-gauri.jpg",
-    focalPoint: "50% 25%",
-  },
-  {
-    id: "saraswati-sharada",
-    seq: 17,
-    name: "Saraswati — Sharada",
-    location: "Sharada Peeth, Kashmir",
-    description:
-      "This journey honours Sharada and the historic Sharada Peeth in Kashmir. Reflect on the relationship between learning, understanding, and creative expression.",
-    side: "left",
-    source: "still",
-    stillPath: "/goddess18/17-saraswati-sharada.jpg",
-    focalPoint: "50% 25%",
-  },
-  {
-    id: "jwalamukhi",
     seq: 18,
-    name: "Jwalamukhi",
-    location: "Kangra, Himachal Pradesh",
-    description:
-      "Explore Jwalamukhi in Kangra, where sacred flames are central to worship. Reflect on the energy and commitment that sustain meaningful action.",
-    side: "right",
-    source: "still",
-    stillPath: "/goddess18/18-jwalamukhi.jpg",
-    focalPoint: "50% 25%",
+    name: "Saraswati (Sharada)",
+    location: "Kashmir region",
+    note: "Location and tradition disputed across sources.",
   },
 ];
-
-export const GODDESS_FRAMES = Array.from(
-  { length: 40 },
-  (_, i) => `/goddesvideo2/frame_${String(i + 1).padStart(4, "0")}.jpg`,
-);
-
-export function buildFrameWeights(): number[] {
-  const weights = new Array(40).fill(1.0);
-  const transitions = [4, 8, 13, 17, 21, 25, 29, 34];
-  transitions.forEach((i) => {
-    if (weights[i] !== undefined) weights[i] = 0.4;
-    if (i > 0 && weights[i - 1] !== undefined) weights[i - 1] = 0.6;
-  });
-  VIDEO_SCENES.forEach((scene) => {
-    const rep = (scene.repFrame ?? 1) - 1;
-    if (weights[rep] !== undefined) weights[rep] = 2.0;
-    if (rep + 1 < 40 && weights[rep + 1] !== undefined) weights[rep + 1] = 1.6;
-  });
-  weights[39] = 2.5;
-  weights[38] = 1.8;
-  return weights;
-}

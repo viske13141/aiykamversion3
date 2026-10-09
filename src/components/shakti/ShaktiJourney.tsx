@@ -1,446 +1,312 @@
-import { useEffect, useRef } from "react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useEffect, useRef, useState } from "react";
 import { SiteNav, SiteFooter } from "@/components/aikyam/SiteLayout";
 import {
-  VIDEO_SCENES,
-  STILL_GODDESSES,
-  GODDESS_FRAMES,
-  buildFrameWeights,
-  type GoddessEntry,
+  SHAKTHI_FRAMES,
+  TOTAL_FRAMES,
+  OVERLAY_SECTIONS,
+  SHAKTI_PEETHAS,
 } from "./shaktiData";
 import "./shakti.css";
 
-const TOTAL_FRAMES = GODDESS_FRAMES.length; // 40
-const frameWeights = buildFrameWeights();
-const totalWeight = frameWeights.reduce((a, b) => a + b, 0);
-
-const cumWeights: number[] = [0];
-frameWeights.forEach((w) => cumWeights.push(cumWeights[cumWeights.length - 1]! + w));
-
-function progressToFrameIndex(p: number): number {
-  const d = Math.max(0, Math.min(1, p)) * totalWeight;
-  let i = 0;
-  while (i < frameWeights.length - 1 && cumWeights[i + 1]! <= d) i++;
-  const seg = frameWeights[i] ?? 1;
-  return i + (seg > 0 ? (d - cumWeights[i]!) / seg : 0);
-}
-
-function frameIndexToProgress(frame: number): number {
-  const f = Math.max(0, Math.min(TOTAL_FRAMES - 1, frame - 1));
-  const i = Math.min(Math.floor(f), frameWeights.length - 1);
-  return (cumWeights[i]! + (frameWeights[i] ?? 1) * (f - i)) / totalWeight;
-}
-
-const sceneWindows = VIDEO_SCENES.map((scene) => ({
-  id: scene.id,
-  start: frameIndexToProgress(scene.frameStart!),
-  end: frameIndexToProgress(scene.frameEnd!),
-}));
-
-const smooth = (t: number) => {
+// ─── smooth step ─────────────────────────────────────────────────────────────
+const sm = (t: number) => {
   const c = Math.max(0, Math.min(1, t));
   return c * c * (3 - 2 * c);
 };
 
-// Split text into word spans for staggered reveal.
-// The aria-label on the parent keeps screen-reader output clean.
-function WordSplit({ text, className }: { text: string; className?: string }) {
-  return (
-    <span className={className} aria-hidden="true">
-      {text.split(" ").map((word, i) => (
-        <span key={i} className="shakti-word">
-          {word}
-          {i < text.split(" ").length - 1 ? "\u00a0" : ""}
-        </span>
-      ))}
-    </span>
-  );
-}
-
-function GoddessOverlayText({ entry }: { entry: GoddessEntry }) {
-  return (
-    <>
-      <p className="shakti-seq" aria-hidden="true">
-        {String(entry.seq).padStart(2, "0")} / 18
-      </p>
-      <h2 className="shakti-goddess-name" aria-hidden="true">
-        {entry.name}
-      </h2>
-      <p className="shakti-goddess-location" aria-hidden="true">
-        {entry.location}
-      </p>
-      <p className="shakti-goddess-desc" aria-hidden="true">
-        {entry.description}
-      </p>
-    </>
-  );
-}
+// ─── preload concurrency ──────────────────────────────────────────────────────
+const EAGER_WINDOW = 10; // frames to load immediately around current
+const CONCURRENCY = 4;
 
 export function ShaktiJourney() {
-  const frameTrackRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const panelRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const fillRef = useRef<HTMLDivElement>(null);
-  const stillImgRefs = useRef<(HTMLImageElement | null)[]>([]);
-  const stillSectionRefs = useRef<(HTMLElement | null)[]>([]);
-  const introRef = useRef<HTMLElement>(null);
+  const overlayRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const progressFillRef = useRef<HTMLDivElement>(null);
+  const [ready, setReady] = useState(false);
+  const [loadPct, setLoadPct] = useState(0);
 
   useEffect(() => {
-    gsap.registerPlugin(ScrollTrigger);
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-    // ── Hero text reveal ──────────────────────────────────────────────────
-    if (!reduce && introRef.current) {
-      const heroWords = introRef.current.querySelectorAll<HTMLElement>(".shakti-word");
-      const heroLines = introRef.current.querySelectorAll<HTMLElement>(
-        ".shakti-intro-subtitle, .shakti-intro-desc, .shakti-scroll-cue",
-      );
-      gsap.set(heroWords, { opacity: 0, y: 16 });
-      gsap.set(heroLines, { opacity: 0, y: 10 });
-      const tl = gsap.timeline({ delay: 0.3 });
-      tl.to(heroWords, {
-        opacity: 1,
-        y: 0,
-        duration: 0.55,
-        stagger: 0.045,
-        ease: "power2.out",
-      }).to(
-        heroLines,
-        { opacity: 1, y: 0, duration: 0.5, stagger: 0.12, ease: "power2.out" },
-        "-=0.2",
-      );
-    }
-
-    // ── Frame chapter ─────────────────────────────────────────────────────
     const canvas = canvasRef.current!;
     const ctx = canvas.getContext("2d")!;
-    const images: (HTMLImageElement | null)[] = new Array(TOTAL_FRAMES).fill(null);
-    let disposed = false;
-    let W = 0,
-      H = 0;
 
-    const resize = () => {
+    // ── image cache ───────────────────────────────────────────────────────
+    const cache: (HTMLImageElement | null)[] = new Array(TOTAL_FRAMES).fill(null);
+    let loadedCount = 0;
+    let disposed = false;
+
+    function loadOne(idx: number): Promise<void> {
+      if (cache[idx] || idx < 0 || idx >= TOTAL_FRAMES) return Promise.resolve();
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.decoding = "async";
+        img.src = SHAKTHI_FRAMES[idx]!;
+        const done = () => {
+          if (!disposed) {
+            cache[idx] = img;
+            loadedCount++;
+            setLoadPct(Math.round((loadedCount / TOTAL_FRAMES) * 100));
+            needsDraw = true;
+          }
+          resolve();
+        };
+        img.onload = () => (img.decode ? img.decode().then(done, done) : done());
+        img.onerror = () => {
+          if (import.meta.env.DEV) console.warn("[Shakthi] missing frame:", SHAKTHI_FRAMES[idx]);
+          resolve();
+        };
+      });
+    }
+
+    // load with bounded concurrency
+    async function loadRange(start: number, end: number) {
+      const indices: number[] = [];
+      for (let i = start; i <= end; i++) if (!cache[i]) indices.push(i);
+      for (let i = 0; i < indices.length; i += CONCURRENCY) {
+        if (disposed) break;
+        await Promise.all(indices.slice(i, i + CONCURRENCY).map(loadOne));
+      }
+    }
+
+    // ── canvas sizing ─────────────────────────────────────────────────────
+    let W = 0, H = 0;
+    let needsDraw = true;
+
+    function resize() {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       W = window.innerWidth;
       H = window.innerHeight;
       canvas.width = Math.round(W * dpr);
       canvas.height = Math.round(H * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    };
+      needsDraw = true;
+    }
     resize();
-    window.addEventListener("resize", resize);
+    window.addEventListener("resize", resize, { passive: true });
 
-    const loadFrame = (i: number) =>
-      new Promise<void>((res) => {
-        if (images[i]) return res();
-        const img = new Image();
-        img.decoding = "async";
-        img.src = GODDESS_FRAMES[i]!;
-        const done = () => {
-          if (!disposed) images[i] = img;
-          res();
-        };
-        img.onload = () => (img.decode ? img.decode().then(done, done) : done());
-        img.onerror = () => res();
-      });
-
-    (async () => {
-      await loadFrame(0);
-      if (disposed) return;
-      drawFrame(0);
-      for (let i = 1; i < TOTAL_FRAMES; i++) {
-        if (disposed) break;
-        await loadFrame(i);
-      }
-    })();
-
-    const nearest = (i: number): HTMLImageElement | null => {
+    // ── draw ──────────────────────────────────────────────────────────────
+    function nearest(idx: number): HTMLImageElement | null {
       for (let d = 0; d < TOTAL_FRAMES; d++) {
-        if (images[i - d]) return images[i - d]!;
-        if (images[i + d]) return images[i + d]!;
+        if (cache[idx - d]) return cache[idx - d]!;
+        if (cache[idx + d]) return cache[idx + d]!;
       }
       return null;
-    };
+    }
 
-    const drawFrame = (fi: number) => {
-      const idx = Math.round(Math.max(0, Math.min(TOTAL_FRAMES - 1, fi)));
-      const img = images[idx] ?? nearest(idx);
+    function draw(frameIdx: number) {
+      const idx = Math.max(0, Math.min(TOTAL_FRAMES - 1, Math.round(frameIdx)));
+      const img = cache[idx] ?? nearest(idx);
       if (!img) return;
+      // cover-fit: preserve aspect ratio, fill viewport
       const s = Math.max(W / img.naturalWidth, H / img.naturalHeight);
       const w = img.naturalWidth * s;
       const h = img.naturalHeight * s;
       ctx.clearRect(0, 0, W, H);
-      ctx.globalAlpha = 1;
       ctx.drawImage(img, (W - w) / 2, (H - h) / 2, w, h);
-    };
-
-    let progress = 0;
-    let target = 0;
-    let current = 0;
-    let lastDrawn = -1;
-
-    const render = () => {
-      current += (target - current) * (reduce ? 1 : 0.12);
-      if (Math.abs(target - current) < 0.0005) current = target;
-
-      const fi = progressToFrameIndex(current);
-      const rounded = Math.round(fi);
-      if (rounded !== lastDrawn) {
-        drawFrame(fi);
-        lastDrawn = rounded;
-      }
-
-      panelRefs.current.forEach((panel, i) => {
-        if (!panel) return;
-        const win = sceneWindows[i]!;
-        const len = win.end - win.start;
-        const fade = Math.max(len * 0.25, 0.02);
-        let o = 0;
-        if (progress >= win.start && progress <= win.end) {
-          const enter = smooth((progress - win.start) / fade);
-          const leave = smooth((win.end - progress) / fade);
-          o = Math.min(enter, leave);
-        }
-        panel.style.opacity = String(o);
-        panel.style.visibility = o < 0.005 ? "hidden" : "visible";
-      });
-
-      if (fillRef.current) fillRef.current.style.transform = `scaleX(${progress})`;
-    };
-
-    const ticker = gsap.ticker;
-    ticker.add(render);
-    ticker.lagSmoothing(0);
-
-    const st = ScrollTrigger.create({
-      trigger: frameTrackRef.current,
-      start: "top top",
-      end: "bottom bottom",
-      onUpdate: (self) => {
-        progress = self.progress;
-        target = self.progress;
-      },
-    });
-
-    // ── Still chapter: parallax + text reveal ────────────────────────────
-    stillSectionRefs.current.forEach((section, i) => {
-      if (!section) return;
-      const img = stillImgRefs.current[i];
-      const textEls = section.querySelectorAll<HTMLElement>(
-        ".shakti-seq, .shakti-goddess-name, .shakti-goddess-location, .shakti-goddess-desc",
-      );
-
-      if (!reduce) {
-        // Gentle image parallax: scale 1.00→1.05, slight vertical drift
-        if (img) {
-          gsap.fromTo(
-            img,
-            { scale: 1.05, yPercent: -2 },
-            {
-              scale: 1.0,
-              yPercent: 2,
-              ease: "none",
-              scrollTrigger: {
-                trigger: section,
-                start: "top bottom",
-                end: "bottom top",
-                scrub: true,
-              },
-            },
-          );
-        }
-
-        // Staggered text reveal on scroll-into-view
-        gsap.set(textEls, { opacity: 0, y: 14 });
-        gsap.to(textEls, {
-          opacity: 1,
-          y: 0,
-          duration: 0.6,
-          stagger: 0.1,
-          ease: "power2.out",
-          scrollTrigger: {
-            trigger: section,
-            start: "top 75%",
-            toggleActions: "play none none reverse",
-          },
-        });
-      }
-    });
-
-    // ── Closing section text reveal ───────────────────────────────────────
-    const closing = document.querySelector<HTMLElement>(".shakti-closing");
-    if (closing && !reduce) {
-      const closingEls = closing.querySelectorAll<HTMLElement>(
-        ".aikyam-eyebrow, .shakti-closing-heading .shakti-word, .shakti-closing p, .aikyam-actions",
-      );
-      gsap.set(closingEls, { opacity: 0, y: 12 });
-      gsap.to(closingEls, {
-        opacity: 1,
-        y: 0,
-        duration: 0.55,
-        stagger: 0.08,
-        ease: "power2.out",
-        scrollTrigger: {
-          trigger: closing,
-          start: "top 80%",
-          toggleActions: "play none none reverse",
-        },
-      });
     }
+
+    // ── scroll state ──────────────────────────────────────────────────────
+    let scrollProgress = 0; // 0..1 over the track
+    let targetFrame = 0;
+    let currentFrame = 0;
+    let lastDrawnFrame = -1;
+    let rafId = 0;
+
+    function getScrollProgress(): number {
+      const track = trackRef.current;
+      if (!track) return 0;
+      const rect = track.getBoundingClientRect();
+      const trackH = track.offsetHeight - window.innerHeight;
+      if (trackH <= 0) return 0;
+      return Math.max(0, Math.min(1, -rect.top / trackH));
+    }
+
+    function onScroll() {
+      scrollProgress = getScrollProgress();
+      targetFrame = scrollProgress * (TOTAL_FRAMES - 1);
+
+      // eagerly load frames near current position
+      const near = Math.round(targetFrame);
+      const lo = Math.max(0, near - EAGER_WINDOW);
+      const hi = Math.min(TOTAL_FRAMES - 1, near + EAGER_WINDOW);
+      loadRange(lo, hi);
+    }
+
+    function tick() {
+      rafId = requestAnimationFrame(tick);
+
+      // lerp toward target (instant in reduced-motion)
+      currentFrame += (targetFrame - currentFrame) * (reduce ? 1 : 0.14);
+      if (Math.abs(targetFrame - currentFrame) < 0.05) currentFrame = targetFrame;
+
+      const fi = Math.round(currentFrame);
+      if (needsDraw || fi !== lastDrawnFrame) {
+        draw(currentFrame);
+        lastDrawnFrame = fi;
+        needsDraw = false;
+      }
+
+      // overlay opacity
+      const p = currentFrame / (TOTAL_FRAMES - 1); // 0..1
+      overlayRefs.current.forEach((el, i) => {
+        if (!el) return;
+        const sec = OVERLAY_SECTIONS[i]!;
+        const secStart = sec.startFrame / (TOTAL_FRAMES - 1);
+        const secEnd = sec.endFrame / (TOTAL_FRAMES - 1);
+        const len = secEnd - secStart;
+        const fade = Math.max(len * 0.18, 0.015);
+        let o = 0;
+        if (p >= secStart && p <= secEnd) {
+          o = Math.min(sm((p - secStart) / fade), sm((secEnd - p) / fade));
+        }
+        el.style.opacity = String(o);
+        el.style.visibility = o < 0.005 ? "hidden" : "visible";
+      });
+
+      // progress bar
+      if (progressFillRef.current) {
+        progressFillRef.current.style.transform = `scaleX(${p})`;
+      }
+    }
+
+    // ── boot sequence ─────────────────────────────────────────────────────
+    (async () => {
+      // load first frame before showing anything
+      await loadOne(0);
+      if (disposed) return;
+      draw(0);
+      setReady(true);
+
+      // eager window around frame 0
+      await loadRange(1, Math.min(TOTAL_FRAMES - 1, EAGER_WINDOW));
+      if (disposed) return;
+
+      // rest in background
+      await loadRange(EAGER_WINDOW + 1, TOTAL_FRAMES - 1);
+    })();
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    rafId = requestAnimationFrame(tick);
 
     return () => {
       disposed = true;
-      st.kill();
-      ticker.remove(render);
+      cancelAnimationFrame(rafId);
       window.removeEventListener("resize", resize);
-      ScrollTrigger.getAll().forEach((t) => t.kill());
+      window.removeEventListener("scroll", onScroll);
     };
   }, []);
 
   return (
-    <div className="aikyam-page shakti-page">
+    <div className="aikyam-page sk-page">
       <SiteNav />
 
-      {/* ── Hero: temple architecture background ── */}
-      <section
-        ref={introRef}
-        className="shakti-intro"
-        aria-label="Shakti — I CREATE, The 18 Maha Shakti Peethas"
-      >
-        <div className="shakti-intro-bg" aria-hidden="true">
-          <img
-            src="/images/aikyam-about/sequence_01/01_entrance.jpg"
-            alt=""
-            loading="eager"
-            fetchPriority="high"
-          />
+      {/* ── loading screen ── */}
+      {!ready && (
+        <div className="sk-loader" aria-live="polite" aria-label="Loading Shakthi experience">
+          <p className="aikyam-eyebrow">Shakthi — The Divine Feminine</p>
+          <div className="sk-loader-rail">
+            <div className="sk-loader-fill" style={{ transform: `scaleX(${loadPct / 100})` }} />
+          </div>
+          <span className="sk-loader-pct">{loadPct}%</span>
         </div>
-        <div className="shakti-intro-content">
-          <p className="aikyam-eyebrow">Shakti — I CREATE</p>
-          <h1 aria-label="The 18 Maha Shakti Peethas">
-            <WordSplit text="The 18 Maha Shakti Peethas" />
-          </h1>
-          <p className="shakti-intro-subtitle">The Sacred Journey</p>
-          <p className="shakti-intro-desc">
-            Explore sacred expressions of Shakti and reflect on creative energy, intention, and the
-            possibilities you bring into the world.
-          </p>
-          <p className="shakti-scroll-cue" aria-hidden="true">
-            Scroll to explore ↓
-          </p>
-        </div>
-      </section>
+      )}
 
-      {/* ── Chapter 1 label ── */}
-      <div className="shakti-chapter-label">
-        <p className="aikyam-eyebrow">Chapter One</p>
-        <h2>Nine Goddesses — A Scroll Journey</h2>
-      </div>
-
-      {/* ── Frame chapter ── */}
+      {/* ── cinematic scroll track ── */}
       <div
-        ref={frameTrackRef}
-        className="shakti-frame-track"
-        style={{ height: "1800vh" }}
-        aria-label="Nine goddess scenes — scroll to explore"
+        ref={trackRef}
+        className="sk-track"
+        style={{ height: "500vh" }}
+        aria-label="Shakthi cinematic scroll experience — 135 frames"
       >
-        <div className="shakti-frame-stage">
-          <canvas ref={canvasRef} className="shakti-frame-canvas" aria-hidden="true" />
-          <div className="shakti-frame-vignette" aria-hidden="true" />
+        <div className="sk-stage" aria-hidden={!ready}>
+          {/* canvas — primary rendering surface */}
+          <canvas
+            ref={canvasRef}
+            className="sk-canvas"
+            aria-hidden="true"
+            style={{ opacity: ready ? 1 : 0 }}
+          />
 
-          {VIDEO_SCENES.map((scene, i) => (
+          {/* vignette */}
+          <div className="sk-vignette" aria-hidden="true" />
+
+          {/* editorial overlays — one per section */}
+          {OVERLAY_SECTIONS.map((sec, i) => (
             <div
-              key={scene.id}
-              ref={(el) => {
-                panelRefs.current[i] = el;
-              }}
-              className="shakti-goddess-panel"
-              data-side={scene.side}
-              style={{ opacity: 0, visibility: "hidden" }}
+              key={i}
+              ref={(el) => { overlayRefs.current[i] = el; }}
+              className={`sk-overlay sk-overlay--${sec.position}`}
+              style={{ opacity: i === 0 ? 1 : 0, visibility: i === 0 ? "visible" : "hidden" }}
               aria-hidden="true"
             >
-              <div className="shakti-goddess-scrim" />
-              <div className="shakti-goddess-body">
-                <GoddessOverlayText entry={scene} />
+              <div className="sk-overlay-scrim" />
+              <div className="sk-overlay-body">
+                <p className="sk-overlay-eyebrow">{sec.eyebrow}</p>
+                <h2 className="sk-overlay-title">{sec.title}</h2>
+                <p className="sk-overlay-sub">{sec.subtitle}</p>
+                {i === 0 && (
+                  <p className="sk-cue">Scroll to discover ↓</p>
+                )}
               </div>
             </div>
           ))}
 
-          <div className="shakti-frame-progress" aria-hidden="true">
-            <div ref={fillRef} className="shakti-frame-progress-fill" />
+          {/* progress bar */}
+          <div className="sk-progress" aria-hidden="true">
+            <div ref={progressFillRef} className="sk-progress-fill" />
           </div>
         </div>
 
-        {/* Accessible text for screen readers */}
+        {/* screen-reader accessible summary */}
         <div className="sr-only">
-          {VIDEO_SCENES.map((scene) => (
-            <article key={scene.id}>
-              <h2>{scene.name}</h2>
-              <p>{scene.location}</p>
-              <p>{scene.description}</p>
-            </article>
-          ))}
+          <h1>Shakthi — The Divine Feminine</h1>
+          <p>
+            A cinematic scroll journey through 135 frames depicting the Sri Chakra and sacred
+            expressions of Shakti. Scroll to advance through the sequence.
+          </p>
         </div>
       </div>
 
-      {/* ── Chapter 2 label ── */}
-      <div className="shakti-chapter-label">
-        <p className="aikyam-eyebrow">Chapter Two</p>
-        <h2>Nine Goddesses — Sacred Stills</h2>
-      </div>
+      {/* ── 18 Maha Shakti Peethas section ── */}
+      <section className="sk-peethas" aria-labelledby="sk-peethas-heading">
+        <div className="sk-peethas-intro">
+          <p className="aikyam-eyebrow">Sacred Geography</p>
+          <h2 id="sk-peethas-heading">The 18 Maha Shakti Peethas</h2>
+          <p className="sk-peethas-lead">
+            Across the sacred geography of the Indian subcontinent, the Maha Shakti Peethas are
+            revered as manifestations of the Divine Feminine. Each sacred site carries its own
+            traditions, history, and devotional significance.
+          </p>
+          <p className="sk-peethas-note">
+            The list below follows one commonly cited Ashtadasha Shakti Peetha tradition.
+            Traditions, spellings, and locations vary across sources and require editorial
+            verification before publication. The cinematic frames above are artistic depictions
+            and do not represent specific temple idols or deities.
+          </p>
+        </div>
 
-      {/* ── Still chapter: half-image / half-content ── */}
-      {STILL_GODDESSES.map((goddess, i) => (
-        <section
-          key={goddess.id}
-          ref={(el) => {
-            stillSectionRefs.current[i] = el;
-          }}
-          className="shakti-still-section"
-          data-side={goddess.side}
-          aria-labelledby={`shakti-still-${goddess.id}`}
-        >
-          {/* Image half */}
-          <div className="shakti-still-img-col" aria-hidden="true">
-            <img
-              ref={(el) => {
-                stillImgRefs.current[i] = el;
-              }}
-              src={goddess.stillPath}
-              alt=""
-              loading={i === 0 ? "eager" : "lazy"}
-              style={{ objectPosition: goddess.focalPoint }}
-            />
-          </div>
+        <ol className="sk-peethas-grid" aria-label="18 Maha Shakti Peethas">
+          {SHAKTI_PEETHAS.map((p) => (
+            <li key={p.seq} className="sk-peetha-card">
+              <span className="sk-peetha-num">{String(p.seq).padStart(2, "0")}</span>
+              <h3 className="sk-peetha-name">{p.name}</h3>
+              <p className="sk-peetha-loc">{p.location}</p>
+              {p.note && <p className="sk-peetha-editorial">{p.note}</p>}
+            </li>
+          ))}
+        </ol>
+      </section>
 
-          {/* Content half */}
-          <div className="shakti-still-copy">
-            <p className="shakti-seq">{String(goddess.seq).padStart(2, "0")} / 18</p>
-            <h2 id={`shakti-still-${goddess.id}`} className="shakti-goddess-name">
-              {goddess.name}
-            </h2>
-            <p className="shakti-goddess-location">{goddess.location}</p>
-            <p className="shakti-goddess-desc">{goddess.description}</p>
-          </div>
-        </section>
-      ))}
-
-      {/* ── Closing ── */}
-      <section className="shakti-closing" aria-label="Return to AIKYA Mandala">
+      {/* ── closing ── */}
+      <section className="sk-closing" aria-label="Continue your journey">
         <p className="aikyam-eyebrow">The Journey Continues</p>
-        <h2
-          className="shakti-closing-heading"
-          aria-label="Eighteen expressions. One creative force."
-        >
-          <WordSplit text="Eighteen expressions." />
-          <br />
-          <WordSplit text="One creative force." />
+        <h2 className="sk-closing-h">
+          One sacred energy.<br />Eighteen expressions.
         </h2>
         <p>
-          Each Shakti Peetha marks a place where the divine creative energy is honoured. Together
-          they form a living map of Shakti across the land — an invitation to reflect on the
-          creative possibilities you carry within you.
+          The Shakti Peethas mark places where the divine creative energy is honoured across the
+          land — an invitation to reflect on the creative possibilities you carry within you.
         </p>
         <div className="aikyam-actions">
           <a href="/aikya-mandala">
