@@ -1,18 +1,11 @@
 [build]
   command = "npm run build"
-  publish = ".output/public"
+  publish = "dist"
 
 [build.environment]
   NODE_VERSION = "20"
-  NETLIFY = "true"
 
 [[redirects]]
   from = "/*"
-  to = "/.netlify/functions/server"
+  to = "/index.html"
   status = 200
-  force = false
-  conditions = {Role = []}
-
-[functions]
-  directory = ".output/server"
-  node_bundler = "esbuild"

@@ -10,7 +10,4 @@ export default defineConfig({
   tanstackStart: {
     server: { entry: "server" },
   },
-  nitro: {
-    preset: process.env.NETLIFY ? "netlify" : "cloudflare-module",
-  },
 });
