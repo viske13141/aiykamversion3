@@ -231,3 +231,28 @@ html.lenis, html.lenis body { height: auto; }
 @media (prefers-reduced-motion: reduce) {
   .temple-grain, .scroll-hint { animation: none; }
 }
+
+/* ── Mute button ── */
+.mute-btn {
+  position: fixed;
+  bottom: 1.75rem;
+  right: 1.75rem;
+  z-index: 100;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  border: 1px solid oklch(0.97 0.018 85 / 0.3);
+  background: oklch(0.14 0.02 55 / 0.6);
+  color: var(--ivory);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: background 0.2s, border-color 0.2s;
+}
+.mute-btn:hover {
+  background: oklch(0.14 0.02 55 / 0.85);
+  border-color: var(--temple-gold);
+  color: var(--temple-gold);
+}

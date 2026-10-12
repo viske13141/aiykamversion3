@@ -3,6 +3,7 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { sections, type AboutSection } from "./content";
 import { JourneyLinks, SiteFooter, SiteNav } from "./SiteLayout";
+import { MuteButton } from "@/components/ui/MuteButton";
 import "./about.css";
 
 const clamp = (v: number) => Math.max(0, Math.min(1, v));
@@ -103,7 +104,21 @@ function Copy({ section, final = false }: { section: AboutSection; final?: boole
 
 export function AboutExperience() {
   const root = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [muted, setMuted] = useState(false);
   const [reading, setReading] = useState(false);
+
+  useEffect(() => {
+    const audio = audioRef.current!;
+    audio.volume = 0.5;
+    audio.play().catch(() => {});
+  }, []);
+
+  const toggleMute = () => {
+    const audio = audioRef.current!;
+    audio.muted = !audio.muted;
+    setMuted(audio.muted);
+  };
   useEffect(() => {
     if (reading) return;
     gsap.registerPlugin(ScrollTrigger);
@@ -342,6 +357,8 @@ export function AboutExperience() {
           <span>Scroll to explore ↓</span>
         </div>
       )}
+      <audio ref={audioRef} src="/audios/about.mp4" loop autoPlay />
+      <MuteButton muted={muted} onClick={toggleMute} />
       <SiteFooter />
     </div>
   );

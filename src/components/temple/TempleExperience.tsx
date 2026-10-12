@@ -4,6 +4,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Lenis from "lenis";
 import frameUrls from "@/assets/temple-frames.json";
 import { chapters as chapterDefs, frameWeights, progressMarks as markDefs } from "./chapters";
+import { MuteButton } from "@/components/ui/MuteButton";
 
 const FRAMES = frameUrls as string[];
 const INITIAL = 8;
@@ -59,8 +60,22 @@ export function TempleExperience() {
   const chapterRefs = useRef<(HTMLElement | null)[]>([]);
   const fillRef = useRef<HTMLDivElement>(null);
   const markRefs = useRef<(HTMLSpanElement | null)[]>([]);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [muted, setMuted] = useState(false);
   const [loaded, setLoaded] = useState(0);
   const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const audio = audioRef.current!;
+    audio.volume = 0.5;
+    audio.play().catch(() => {});
+  }, []);
+
+  const toggleMute = () => {
+    const audio = audioRef.current!;
+    audio.muted = !audio.muted;
+    setMuted(audio.muted);
+  };
 
   useEffect(() => {
     gsap.registerPlugin(ScrollTrigger);
@@ -281,6 +296,7 @@ export function TempleExperience() {
           </nav>
 
           <div className="scroll-hint" aria-hidden>Scroll to enter</div>
+          <MuteButton muted={muted} onClick={toggleMute} />
 
           <div className="loader" data-hidden={ready}>
             <p>Entering the Temple</p>
@@ -291,6 +307,7 @@ export function TempleExperience() {
           </div>
         </div>
       </div>
+      <audio ref={audioRef} src="/audios/om.mp4" loop autoPlay />
     </main>
   );
 }
